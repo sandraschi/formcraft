@@ -1,0 +1,21 @@
+[package]
+name = "formcraft-mcp"
+description = "formcraft L2: CLI and stdio MCP server for form definitions, responses, and NPS analytics."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "formcraft"
+path = "src/main.rs"
+
+[dependencies]
+formcraft-core = { path = "../formcraft-core" }
+formcraft-store = { path = "../formcraft-store" }
+craft-biz.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+
+[lints]
+workspace = true

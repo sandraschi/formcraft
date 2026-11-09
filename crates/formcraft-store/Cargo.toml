@@ -1,0 +1,18 @@
+[package]
+name = "formcraft-store"
+description = "formcraft L1 store: SQLite WAL persistence for forms, question schemas, responses, and NPS analytics."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+craft-biz.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

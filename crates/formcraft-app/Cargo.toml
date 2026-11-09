@@ -1,0 +1,23 @@
+[package]
+name = "formcraft-app"
+description = "formcraft L3: Native eframe/egui desktop window for designing forms, viewing live responses, and inspecting NPS/sentiment analytics."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "formcraft-app"
+path = "src/main.rs"
+
+[dependencies]
+formcraft-core = { path = "../formcraft-core" }
+formcraft-store = { path = "../formcraft-store" }
+craft-biz.workspace = true
+craft-biz-ui = { path = "../../../craft-biz/crates/craft-biz-ui" }
+serde_json.workspace = true
+eframe.workspace = true
+egui.workspace = true
+
+[lints]
+workspace = true
