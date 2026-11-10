@@ -4,7 +4,7 @@
 use clap::{Parser, Subcommand};
 use craft_biz::bus::Bus;
 use craft_biz::mcp::{serve_stdio, ToolHost};
-use formcraft_core::{dispatch, tools, Command, Confinement, Ctx, APP, VERSION};
+use formcraft_core::{dispatch, tools, Command, Confinement, Ctx, NewResponse, APP, VERSION};
 use formcraft_store::Store;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -46,6 +46,11 @@ enum Cmd {
     Get { id: String },
     /// Calculate NPS report for a form.
     Nps { form_id: String },
+    /// Import or submit responses for a form.
+    ImportResponses {
+        form_id: String,
+        json_array: String,
+    },
     /// Comprehensive report rollup for a form.
     Report { form_id: String },
     /// Route detractors and negative sentiment signals to gaincraft.
@@ -175,6 +180,20 @@ fn main() -> ExitCode {
             }
         }
         Cmd::Nps { form_id } => Command::FormNps { form_id },
+        Cmd::ImportResponses { form_id, json_array } => {
+            let val: Value = serde_json::from_str(&json_array).unwrap_or(json!([]));
+            let mut list = Vec::new();
+            if let Some(arr) = val.as_array() {
+                for item in arr {
+                    list.push(NewResponse {
+                        account_id: item.get("account_id").and_then(Value::as_str).map(str::to_string),
+                        answers: item.get("answers").cloned().unwrap_or_else(|| item.clone()),
+                        nps_score: item.get("nps_score").and_then(Value::as_i64),
+                    });
+                }
+            }
+            Command::ResponsesImport { form_id, responses: list }
+        }
         Cmd::Report { form_id } => Command::FormReport { form_id },
         Cmd::RouteDetractors { form_id } => Command::RouteDetractors { form_id },
         Cmd::InboxDrain => Command::InboxDrain,
