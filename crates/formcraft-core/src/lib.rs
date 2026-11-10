@@ -315,9 +315,11 @@ pub fn dispatch(cmd: &Command, ctx: &mut Ctx) -> Result<Value, String> {
                         if let Some(acc) = r.account_id {
                             // Emit signal.negative to gaincraft inbox
                             let payload = json!({
+                                "account": acc,
                                 "account_id": acc,
                                 "source": "formcraft",
                                 "form_id": form_id,
+                                "score": 3,
                                 "nps_score": score,
                                 "sentiment": r.sentiment,
                                 "response_id": r.id
