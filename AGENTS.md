@@ -1,4 +1,4 @@
-# FormCraft — AGENTS.md
+# FormCraft - AGENTS.md
 
 ## Architecture
 

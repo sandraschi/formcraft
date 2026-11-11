@@ -46,10 +46,10 @@ enum Cmd {
     Get { id: String },
     /// Calculate NPS report for a form.
     Nps { form_id: String },
-    /// Import or submit responses for a form.
+    /// Import or submit responses for a form (inline JSON or path to JSON file).
     ImportResponses {
         form_id: String,
-        json_array: String,
+        json_or_path: String,
     },
     /// Comprehensive report rollup for a form.
     Report { form_id: String },
@@ -180,19 +180,50 @@ fn main() -> ExitCode {
             }
         }
         Cmd::Nps { form_id } => Command::FormNps { form_id },
-        Cmd::ImportResponses { form_id, json_array } => {
-            let val: Value = serde_json::from_str(&json_array).unwrap_or(json!([]));
+        Cmd::ImportResponses {
+            form_id,
+            json_or_path,
+        } => {
+            let path = std::path::Path::new(&json_or_path);
+            let content = if path.is_file() {
+                match std::fs::read_to_string(path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        eprintln!("Error: {}: {e}", path.display());
+                        return ExitCode::FAILURE;
+                    }
+                }
+            } else {
+                json_or_path
+            };
+            let val: Value = match serde_json::from_str(&content) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("Error: responses are not valid JSON: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            let Some(arr) = val.as_array() else {
+                eprintln!("Error: responses must be a JSON array");
+                return ExitCode::FAILURE;
+            };
             let mut list = Vec::new();
-            if let Some(arr) = val.as_array() {
+            {
                 for item in arr {
                     list.push(NewResponse {
-                        account_id: item.get("account_id").and_then(Value::as_str).map(str::to_string),
+                        account_id: item
+                            .get("account_id")
+                            .and_then(Value::as_str)
+                            .map(str::to_string),
                         answers: item.get("answers").cloned().unwrap_or_else(|| item.clone()),
                         nps_score: item.get("nps_score").and_then(Value::as_i64),
                     });
                 }
             }
-            Command::ResponsesImport { form_id, responses: list }
+            Command::ResponsesImport {
+                form_id,
+                responses: list,
+            }
         }
         Cmd::Report { form_id } => Command::FormReport { form_id },
         Cmd::RouteDetractors { form_id } => Command::RouteDetractors { form_id },
@@ -201,11 +232,9 @@ fn main() -> ExitCode {
 
     match dispatch(&cmd_target, &mut ctx) {
         Ok(val) => {
-            if cli.json {
-                println!("{}", serde_json::to_string_pretty(&val).unwrap_or_default());
-            } else {
-                println!("{}", serde_json::to_string_pretty(&val).unwrap_or_default());
-            }
+            // Human tables arrive with the step-4 CLI rework; JSON for both until then.
+            let _ = cli.json;
+            println!("{}", serde_json::to_string_pretty(&val).unwrap_or_default());
             ExitCode::SUCCESS
         }
         Err(e) => {

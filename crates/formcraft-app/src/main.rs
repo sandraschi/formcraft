@@ -291,7 +291,13 @@ fn main() {
         .unwrap_or_else(|_| PathBuf::from("."))
         .join("formcraft")
         .join("formcraft.db");
-    let store = Store::open(&default_db).expect("cannot open formcraft.db");
+    let store = match Store::open(&default_db) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("formcraft-app: cannot open {}: {e}", default_db.display());
+            std::process::exit(1);
+        }
+    };
     let ctx = Ctx {
         store,
         confinement: Confinement(None),
@@ -301,7 +307,7 @@ fn main() {
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("FormCraft — Survey, Response & NPS Studio")
+            .with_title("FormCraft - Survey, Response & NPS Studio")
             .with_inner_size([1100.0, 720.0]),
         ..Default::default()
     };
