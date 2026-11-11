@@ -46,10 +46,10 @@ enum Cmd {
     Get { id: String },
     /// Calculate NPS report for a form.
     Nps { form_id: String },
-    /// Import or submit responses for a form.
+    /// Import or submit responses for a form (inline JSON or path to JSON file).
     ImportResponses {
         form_id: String,
-        json_array: String,
+        json_or_path: String,
     },
     /// Comprehensive report rollup for a form.
     Report { form_id: String },
@@ -180,8 +180,9 @@ fn main() -> ExitCode {
             }
         }
         Cmd::Nps { form_id } => Command::FormNps { form_id },
-        Cmd::ImportResponses { form_id, json_array } => {
-            let val: Value = serde_json::from_str(&json_array).unwrap_or(json!([]));
+        Cmd::ImportResponses { form_id, json_or_path } => {
+            let content = std::fs::read_to_string(&json_or_path).unwrap_or(json_or_path);
+            let val: Value = serde_json::from_str(&content).unwrap_or(json!([]));
             let mut list = Vec::new();
             if let Some(arr) = val.as_array() {
                 for item in arr {
