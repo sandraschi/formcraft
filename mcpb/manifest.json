@@ -1,0 +1,77 @@
+{
+  "manifest_version": "0.2",
+  "name": "formcraft",
+  "display_name": "FormCraft",
+  "version": "__VERSION__",
+  "description": "formcraft L3: Native eframe/egui desktop window for designing forms, viewing live responses, and inspecting NPS/sentiment analytics.",
+  "author": {
+    "name": "Sandra Schipal",
+    "url": "https://github.com/sandraschi"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sandraschi/formcraft"
+  },
+  "license": "MIT OR Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "formcraft.exe",
+    "mcp_config": {
+      "command": "${__dirname}/formcraft.exe",
+      "args": [
+        "mcp"
+      ]
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "win32"
+    ]
+  },
+  "tools": [
+    {
+      "name": "form_status",
+      "description": "Report formcraft status, forms count and store health"
+    },
+    {
+      "name": "form_define",
+      "description": "Create or update a form definition"
+    },
+    {
+      "name": "form_validate",
+      "description": "Validate a form JSON schema"
+    },
+    {
+      "name": "form_list",
+      "description": "List all defined forms"
+    },
+    {
+      "name": "form_get",
+      "description": "Get a single form definition by ID"
+    },
+    {
+      "name": "form_responses_import",
+      "description": "Import responses for a form"
+    },
+    {
+      "name": "form_responses_list",
+      "description": "List all responses submitted for a form"
+    },
+    {
+      "name": "form_nps",
+      "description": "Calculate Net Promoter Score (NPS) and sentiment analysis"
+    },
+    {
+      "name": "form_report",
+      "description": "Comprehensive form response rollup and sentiment report"
+    },
+    {
+      "name": "form_route_detractors",
+      "description": "Emit negative sentiment and detractor signals to gaincraft"
+    },
+    {
+      "name": "form_inbox_drain",
+      "description": "Process pending incoming signals in the formcraft inbox"
+    }
+  ]
+}
