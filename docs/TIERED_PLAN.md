@@ -1,4 +1,4 @@
-# FormCraft — Tiered Execution Plan
+# FormCraft - Tiered Execution Plan
 
 **Parent Standard:** [`RUST_ARTCRAFT_STANDARD.md`](../../mcp-central-docs/standards/RUST_ARTCRAFT_STANDARD.md)  
 **Menu Bar Standard:** [`CRAFT_MENU_BAR_STANDARD.md`](../../mcp-central-docs/standards/rust-artcraft/CRAFT_MENU_BAR_STANDARD.md)  
@@ -18,7 +18,7 @@ Tier 1: Core Engine ──> Tier 2: MCP / CLI ──> Tier 3: Desktop UI ──>
 
 ## Tier Specifications
 
-### Tier 1 — Core Survey & Sentiment Engine (`formcraft-core`, `formcraft-store`)
+### Tier 1 - Core Survey & Sentiment Engine (`formcraft-core`, `formcraft-store`)
 - [x] L1 `Command::dispatch` universal survey execution bus.
 - [x] SQLite WAL database schema (`forms`, `responses`).
 - [x] JSON schema validator for question types (ratings, text, choices).
@@ -27,18 +27,18 @@ Tier 1: Core Engine ──> Tier 2: MCP / CLI ──> Tier 3: Desktop UI ──>
 - [x] Cross-craft bus emitter (`signal.negative` -> GainCraft).
 - [x] `#![forbid(unsafe_code)]` and zero-panic clippy lints.
 
-### Tier 2 — Headless Driver & FastMCP (`formcraft-mcp`)
+### Tier 2 - Headless Driver & FastMCP (`formcraft-mcp`)
 - [x] Unified CLI `formcraft-cli` with `--json` output.
 - [x] FastMCP stdio server communicating over JSON-RPC 2.0.
 - [x] Response export and sentiment analysis inspection.
 - [x] Headless `--smoke` verification without window initialization.
 
-### Tier 3 — Desktop Workstation UI (`formcraft-app`)
+### Tier 3 - Desktop Workstation UI (`formcraft-app`)
 - [x] Immediate-mode `egui` 0.37 / `wgpu` workstation.
 - [x] Drag-and-drop form question builder and live preview.
 - [x] Response table and real-time NPS / sentiment telemetry gauges.
 
-### Tier 4 — Craft Menu Bar Standard, Help Suite & Hardened Verification
+### Tier 4 - Craft Menu Bar Standard, Help Suite & Hardened Verification
 - [ ] Universal 8-menu bar (`File`, `Edit`, `View`, `Insert`, `Modify`, `Commands`, `Window`, `Help`) with `switch_on_hover`.
 - [ ] Mandatory 5-dialog Help suite (`Command Palette...`, `Keyboard Shortcuts...`, `Project Files & Docs...`, `Licenses & Notices...`, `About FormCraft`).
 - [ ] Fleet UI/UX Pattern 2 adherence: viewport-centric navigation, top button row mapped to View toggles, panel visibility managed via `View` / `Window`.

@@ -8,6 +8,9 @@ use formcraft_store::Store;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+mod collector;
+pub use collector::{bind_collector, serve_collector, serve_one, truncate_peer, PublicDecision};
+
 pub const APP: &str = "formcraft";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

@@ -2,6 +2,8 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use craft_biz::bus::Bus;
+use craft_biz_ui::bookend::{self, Bar, Spec};
+use craft_biz_ui::menu::Item;
 use eframe::egui::{self, Color32, RichText};
 use formcraft_core::{dispatch, Command, Confinement, Ctx};
 use formcraft_store::Store;
@@ -24,6 +26,9 @@ struct FormCraftApp {
     responses_list: Vec<Value>,
     nps_summary: Option<Value>,
     status_msg: String,
+    bar: Bar,
+    dark: bool,
+    zoom: f32,
 }
 
 impl FormCraftApp {
@@ -36,6 +41,9 @@ impl FormCraftApp {
             responses_list: Vec::new(),
             nps_summary: None,
             status_msg: "Ready".to_string(),
+            bar: Bar::new(),
+            dark: true,
+            zoom: 1.0,
         };
         app.reload();
         app
@@ -76,8 +84,47 @@ impl FormCraftApp {
     }
 }
 
+impl FormCraftApp {
+    fn paint_menu(&mut self, ui: &mut egui::Ui) {
+        let docs = bookend::repo_docs(env!("CARGO_MANIFEST_DIR"));
+        let spec = Spec {
+            name: "FormCraft",
+            version: env!("CARGO_PKG_VERSION"),
+            description: "Forms, responses, and the loopback collector.",
+            repository: "https://github.com/sandraschi/formcraft",
+            docs: &docs,
+            dark: self.dark,
+            zoom: self.zoom,
+            file: vec![Item::action("Refresh", "app.refresh")],
+            view: vec![
+                Item::action("Forms", "view.forms").checked(self.view == View::Forms),
+                Item::action("Responses", "view.responses").checked(self.view == View::Responses),
+                Item::action("NPS", "view.nps").checked(self.view == View::NpsAnalytics),
+                Item::action("Bus signals", "view.bus").checked(self.view == View::BusSignals),
+            ],
+            middle: Vec::new(),
+        };
+        let change = self.bar.show(ui, &spec);
+        if let Some(dark) = change.dark {
+            self.dark = dark;
+        }
+        if let Some(zoom) = change.zoom {
+            self.zoom = zoom;
+        }
+        match change.action.as_deref() {
+            Some("app.refresh") => self.reload(),
+            Some("view.forms") => self.view = View::Forms,
+            Some("view.responses") => self.view = View::Responses,
+            Some("view.nps") => self.view = View::NpsAnalytics,
+            Some("view.bus") => self.view = View::BusSignals,
+            _ => {}
+        }
+    }
+}
+
 impl eframe::App for FormCraftApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.paint_menu(ui);
         ui.horizontal(|ui| {
             ui.heading(
                 RichText::new("📋 FormCraft Studio")
@@ -278,7 +325,9 @@ fn main() {
             bus: Bus::new(PathBuf::from("target/smoke_bus")),
             actor: "smoke".to_string(),
         };
-        if dispatch(&Command::Status, &mut ctx).is_ok() {
+        if dispatch(&Command::Status, &mut ctx).is_ok()
+            && bookend::smoke("FormCraft", env!("CARGO_PKG_VERSION"), "forms").is_ok()
+        {
             println!("smoke: ok (formcraft-app)");
             std::process::exit(0);
         } else {

@@ -4,7 +4,10 @@
 use clap::{Parser, Subcommand};
 use craft_biz::bus::Bus;
 use craft_biz::mcp::{serve_stdio, ToolHost};
-use formcraft_core::{dispatch, tools, Command, Confinement, Ctx, NewResponse, APP, VERSION};
+use formcraft_core::{
+    bind_collector, dispatch, serve_collector, tools, Command, Confinement, Ctx, NewResponse, APP,
+    VERSION,
+};
 use formcraft_store::Store;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -57,6 +60,14 @@ enum Cmd {
     RouteDetractors { form_id: String },
     /// Drain incoming bus signals.
     InboxDrain,
+    /// Store the per-form collect token. The token is not printed back.
+    CollectToken { form_id: String, token: String },
+    /// Accept posted responses on 127.0.0.1. Registered port: 14133.
+    Serve {
+        /// Loopback port. Use 14133 unless that port is taken.
+        #[arg(long)]
+        port: u16,
+    },
     /// Print tool specifications (or markdown docs).
     Tools {
         #[arg(long)]
@@ -228,6 +239,46 @@ fn main() -> ExitCode {
         Cmd::Report { form_id } => Command::FormReport { form_id },
         Cmd::RouteDetractors { form_id } => Command::RouteDetractors { form_id },
         Cmd::InboxDrain => Command::InboxDrain,
+        Cmd::CollectToken { form_id, token } => {
+            match ctx.store.set_collect_token(&form_id, &token) {
+                Ok(()) => {
+                    println!("{}", json!({ "form_id": form_id, "token_set": true }));
+                    return ExitCode::SUCCESS;
+                }
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
+        Cmd::Serve { port } => {
+            let listener = match bind_collector(port) {
+                Ok(listener) => listener,
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            match listener.local_addr() {
+                Ok(addr) => {
+                    eprintln!(
+                        "formcraft collect listening on http://{addr}/v1/forms/{{id}}/responses"
+                    );
+                }
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    return ExitCode::FAILURE;
+                }
+            }
+            drop(ctx);
+            match serve_collector(&db_path, listener) {
+                Ok(()) => return ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
     };
 
     match dispatch(&cmd_target, &mut ctx) {

@@ -39,6 +39,8 @@ pub struct ResponseRecord {
     pub nps_score: Option<i64>,
     pub sentiment: f64,
     pub submitted_at: String,
+    /// Truncated submitter network, present only for a public collect. Never a full address.
+    pub submitter_net: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,6 +67,7 @@ impl Store {
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "synchronous", "NORMAL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
+        conn.pragma_update(None, "busy_timeout", "2000")?;
         let s = Self { conn };
         s.init_schema()?;
         Ok(s)
@@ -72,6 +75,7 @@ impl Store {
 
     pub fn in_memory() -> Result<Self, FormError> {
         let conn = Connection::open_in_memory()?;
+        conn.pragma_update(None, "busy_timeout", "2000")?;
         let s = Self { conn };
         s.init_schema()?;
         Ok(s)
@@ -96,13 +100,36 @@ impl Store {
                 answers_json TEXT NOT NULL,
                 nps_score INTEGER,
                 sentiment REAL NOT NULL DEFAULT 0.0,
-                submitted_at TEXT NOT NULL
+                submitted_at TEXT NOT NULL,
+                submitter_net TEXT
             );
 
             CREATE INDEX IF NOT EXISTS idx_responses_form ON responses(form_id);
             CREATE INDEX IF NOT EXISTS idx_responses_account ON responses(account_id);
+
+            CREATE TABLE IF NOT EXISTS collect_tokens (
+                form_id TEXT PRIMARY KEY REFERENCES forms(id) ON DELETE CASCADE,
+                token TEXT NOT NULL
+            );
             "#,
         )?;
+        self.ensure_submitter_net()?;
+        Ok(())
+    }
+
+    fn ensure_submitter_net(&self) -> Result<(), FormError> {
+        let mut stmt = self.conn.prepare("PRAGMA table_info(responses)")?;
+        let names = stmt.query_map([], |r| r.get::<_, String>(1))?;
+        let mut found = false;
+        for name in names {
+            if name? == "submitter_net" {
+                found = true;
+            }
+        }
+        if !found {
+            self.conn
+                .execute("ALTER TABLE responses ADD COLUMN submitter_net TEXT", [])?;
+        }
         Ok(())
     }
 
@@ -218,10 +245,85 @@ impl Store {
         Ok(self.conn.last_insert_rowid())
     }
 
+    pub fn add_collected_response(
+        &mut self,
+        form_id: &str,
+        account_id: Option<&str>,
+        answers: &Value,
+        nps_score: Option<i64>,
+        sentiment: f64,
+        submitter_net: Option<&str>,
+    ) -> Result<i64, FormError> {
+        self.get_form(form_id)?;
+        let answers_str = serde_json::to_string(answers)?;
+        let now = Utc::now().to_rfc3339();
+        self.conn.execute(
+            r#"
+            INSERT INTO responses (
+                form_id, account_id, answers_json, nps_score, sentiment, submitted_at, submitter_net
+            )
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            "#,
+            params![
+                form_id,
+                account_id,
+                answers_str,
+                nps_score,
+                sentiment,
+                now,
+                submitter_net
+            ],
+        )?;
+        Ok(self.conn.last_insert_rowid())
+    }
+
+    pub fn set_collect_token(&mut self, form_id: &str, token: &str) -> Result<(), FormError> {
+        self.get_form(form_id)?;
+        let graphic = token.bytes().all(|b| b.is_ascii_graphic());
+        if token.len() < 16 || !graphic {
+            return Err(FormError::Invalid(
+                "collect token must be at least 16 visible ASCII characters".into(),
+            ));
+        }
+        self.conn.execute(
+            r#"
+            INSERT INTO collect_tokens (form_id, token) VALUES (?1, ?2)
+            ON CONFLICT(form_id) DO UPDATE SET token = excluded.token
+            "#,
+            params![form_id, token],
+        )?;
+        Ok(())
+    }
+
+    pub fn set_submitter_net(&mut self, id: i64, net: Option<&str>) -> Result<(), FormError> {
+        if let Some(net) = net {
+            if net.parse::<std::net::IpAddr>().is_err() {
+                return Err(FormError::Invalid(
+                    "submitter net must be a truncated address".into(),
+                ));
+            }
+        }
+        self.conn.execute(
+            "UPDATE responses SET submitter_net = ?1 WHERE id = ?2",
+            params![net, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn collect_token(&self, form_id: &str) -> Result<Option<String>, FormError> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token FROM collect_tokens WHERE form_id = ?1")?;
+        let token = stmt
+            .query_row(params![form_id], |r| r.get::<_, String>(0))
+            .optional()?;
+        Ok(token)
+    }
+
     pub fn list_responses(&self, form_id: &str) -> Result<Vec<ResponseRecord>, FormError> {
         let mut stmt = self.conn.prepare(
             r#"
-            SELECT id, form_id, account_id, answers_json, nps_score, sentiment, submitted_at
+            SELECT id, form_id, account_id, answers_json, nps_score, sentiment, submitted_at, submitter_net
             FROM responses
             WHERE form_id = ?1
             ORDER BY id ASC
@@ -236,11 +338,21 @@ impl Store {
                 r.get::<_, Option<i64>>(4)?,
                 r.get::<_, f64>(5)?,
                 r.get::<_, String>(6)?,
+                r.get::<_, Option<String>>(7)?,
             ))
         })?;
         let mut list = Vec::new();
         for r in rows {
-            let (id, f_id, account_id, answers_str, nps_score, sentiment, submitted_at) = r?;
+            let (
+                id,
+                f_id,
+                account_id,
+                answers_str,
+                nps_score,
+                sentiment,
+                submitted_at,
+                submitter_net,
+            ) = r?;
             let answers = serde_json::from_str(&answers_str).unwrap_or(Value::Null);
             list.push(ResponseRecord {
                 id,
@@ -250,6 +362,7 @@ impl Store {
                 nps_score,
                 sentiment,
                 submitted_at,
+                submitter_net,
             });
         }
         Ok(list)

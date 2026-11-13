@@ -1,5 +1,7 @@
 # FormCraft: Product Requirements Document
 
+Status 13 November 2026. NPS, the DE/EN lexicon, `signal.negative`, and `formcraft serve --port` exist and have tests. The collector listens on 127.0.0.1 only (registered port 14133). Each form needs its own token, a filled honeypot is discarded, and a stored address is a /24 or /64 prefix. The window has File, Edit, View, Window, and Help. View switches Forms, Responses, NPS, and Bus. The New, Open, Save, and Export rows below are still the target. Undo, cut, and the canvas items are on the menu and disabled.
+
 ## 1. Executive Summary
 
 `formcraft` is the survey management, structured response intake, and customer sentiment analytics engine of the Back-Office Craft Suite. It delivers:
@@ -8,6 +10,7 @@
 - Dual-language (German & English) sentiment lexicon scoring for qualitative responses.
 - Automated churn risk mitigation by emitting `signal.negative` bus events directly to `gaincraft` for detractors.
 - Native `egui 0.37` desktop workstation and stdio JSON-RPC MCP server.
+- Opt-in collector: `formcraft collect-token <id> <token>`, then `formcraft serve --port 14133`. Post JSON to `http://127.0.0.1:14133/v1/forms/<id>/responses` with `token`, `answers`, optional `nps_score`, and an empty `company_website` field. A non-empty honeypot is not stored. The token is not an MCP tool and is not written back to the client.
 
 ## 2. Replaces & Cost Savings
 
